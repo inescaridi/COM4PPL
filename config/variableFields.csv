@@ -1,0 +1,7 @@
+variable,fields
+Case.ID,Case.ID
+cod,cod
+nationality,Nat_PROC Nat_2_PROC
+age,Age_PROC Age_2_PROC
+sex,Sex_PROC
+role,Role_PROC

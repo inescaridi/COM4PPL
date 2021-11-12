@@ -1,0 +1,13 @@
+scores,calculation,median
+Levenshtein,yes,0
+D_L,yes,0
+D_L_FULL,yes,0
+LongestCommonSubstring,yes,0
+gram1,yes,1
+gram2,yes,0
+gram3,yes,0
+Ratio,yes,0
+Partial_ratio,yes,0
+Token_sort_ratio,yes,0
+WRATIO,yes,0
+
