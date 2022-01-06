@@ -117,7 +117,7 @@ def areCompatibles(row1, row2, verbose=False):
             if verbose:
                 print(f"\tresult: {varCompatible}")
     if verbose:
-        print(f"Candidates? {compatible} \n\n")
+        print(f"Candidates? {compatible} \n")
     return compatible
 
 
@@ -128,15 +128,15 @@ def areCandidates(row1, row2, base1, base2, verbose=False):
         # check for valid scheme and keys
         if scheme not in config['schemesAllowed']:
             if verbose:
-                print(f"scheme not used: {scheme}")
+                print(f"Scheme not used: {scheme}")
             continue
         if verbose:
-            print(f"scheme {scheme}")
+            print(f"Running scheme {scheme}")
         if key1 not in base1.columns:
-            print(f"invalid key on database 1 {key1}, skipping")
+            print(f"Error: Invalid key on database 1 {key1}, skipping")
             continue
         if key2 not in base2.columns:
-            print(f"invalid key on database 2 {key2}, skipping")
+            print(f"Error: Invalid key on database 2 {key2}, skipping")
             continue
 
         value1 = row1[key1]
