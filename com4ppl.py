@@ -3,7 +3,6 @@ import pandas as pd
 import textdistance
 from thefuzz import fuzz
 
-
 # Valid algorithms
 comparisonAlgorithms = {
     # Edit based
@@ -41,8 +40,12 @@ config = {}
 def loadConfig(data):
     # files
     config['configFilesPath'] = data['configFilesPath']
+
+    # compatible rows config
     variableFields = pd.read_csv(f"{data['configFilesPath']}/{data['variableFields']}").set_index('variable')
     compatibleData = pd.read_csv(f"{data['configFilesPath']}/{data['compatibleData']}").set_index('variable')
+    compatibleData['equivalences'] = compatibleData[compatibleData.type == 'categorical'].parameter.apply(
+        loadEquivalences)
     config['comparisonSettings'] = compatibleData.join(variableFields).to_dict(orient='index')
 
     # schemes
@@ -61,9 +64,19 @@ def loadConfig(data):
     config['algorithmsConfig'] = algorithmsConfig
 
 
+def loadEquivalences(filename):
+    if not isNaN(filename):
+        equivalencesDF = pd.read_csv(f"{config['configFilesPath']}/{filename}")
+        return list(equivalencesDF.itertuples(index=False, name=None))
+    else:
+        return np.nan
+
+
 def isNaN(value):
     if type(value) == str:
         return value.upper() == 'NAN'
+    elif type(value) == list:
+        return len(value) == 0
     else:
         return np.isnan(value)
 
@@ -100,16 +113,9 @@ def compatibleRanges(row1, row2, options, verbose=False):
 def compatibleCategory(row1, row2, options, verbose=False):
     compatible = True  # need to be compatible on all available fields (can be changed for 'or')
     allowNa = options['na.action'].upper() == 'ALL'
-    equivalences = None
 
     # for debugging
     val1 = val2 = 'NAN'
-
-    if not isNaN(options['parameter']):
-        equivalencesDF = pd.read_csv(f"{config['configFilesPath']}/{options['parameter']}")
-        equivalences = list(equivalencesDF.itertuples(index=False, name=None))
-        # WARNING, there may be a better way to do this other than creating tuples but we should have a scheme
-        # to follow, in order to grab the columns without having to specify their names
 
     for field in options['fields'].split(' '):
         if field not in row1 or field not in row2:
@@ -117,8 +123,8 @@ def compatibleCategory(row1, row2, options, verbose=False):
 
         if isNaN(row1[field]) or isNaN(row2[field]):
             compatible &= allowNa
-        elif equivalences:
-            compatible &= areEquivalentValues(row1[field], row2[field], equivalences)
+        elif not isNaN(options['equivalences']):
+            compatible &= areEquivalentValues(row1[field], row2[field], options['equivalences'])
             val1 = row1[field]
             val2 = row2[field]
 
@@ -181,7 +187,7 @@ def areCandidates(row1, row2, base1, base2, verbose=False):
                 if addToMedian:
                     medianInfo.append(result)
 
-        median = sum(medianInfo)/len(medianInfo)
+        median = sum(medianInfo) / len(medianInfo)
         candidates &= (median >= threshold)
         information[f"median_{scheme}"] = round(median, 4)
 

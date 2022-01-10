@@ -55,21 +55,18 @@ def makeMatching(data, verbose):
     os.makedirs(data['outputPath'], exist_ok=True)
 
     # load databases
-    if verbose:
-        print(f"Loading databases, db1: {data['base1Path']}, db2: {data['base2Path']}")
+    print(f"Loading databases, db1: {data['base1Path']}, db2: {data['base2Path']}")
     base1 = pd.read_csv(data['base1Path'])
     base2 = pd.read_csv(data['base2Path'])
 
     # find compatible rows
-    if verbose:
-        print("Finding compatible rows")
+    print("Finding compatible rows")
     compatiblesDF = base1.apply(lambda r1: base2.apply(lambda r2: com4ppl.areCompatibles(r1, r2), axis=1), axis=1)
     i1, i2 = compatiblesDF.values.nonzero()
     compatibles = list(zip(i1, i2))
 
     # run configured schemes on compatible pairs
-    if verbose:
-        print("Running schemes on compatible pairs")
+    print("Running schemes on compatible pairs")
 
     candidatesList = []
 
