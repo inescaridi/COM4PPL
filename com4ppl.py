@@ -3,23 +3,50 @@ import pandas as pd
 import textdistance
 from thefuzz import fuzz
 
-# CONFIGURATION
-config = {
-    "comparisonAlgorithms": {
-        'Levenshtein': textdistance.levenshtein.normalized_similarity,
-        'DL': textdistance.damerau_levenshtein.normalized_similarity,
-        'fuzzy_ratio': fuzz.ratio
-    }  # TODO add the rest/more
+
+# Valid algorithms
+comparisonAlgorithms = {
+    # Edit based
+    'Levenshtein': textdistance.levenshtein.normalized_similarity,
+    'D_L': textdistance.damerau_levenshtein.normalized_similarity,
+    'MLIPNS': textdistance.mlipns.normalized_similarity,
+    'Hamming': textdistance.hamming.normalized_similarity,
+    'Jaro-Winkler': textdistance.jaro_winkler.normalized_similarity,
+    'Strcmp95': textdistance.strcmp95.normalized_similarity,
+    'Needleman-Wunsch': textdistance.needleman_wunsch.normalized_similarity,
+    'Gotoh': textdistance.gotoh.normalized_similarity,
+    'Smith-Waterman': textdistance.smith_waterman.normalized_similarity,
+
+    # From The Fuzz
+    'Ratio': (lambda x, y: fuzz.ratio(x, y) / 100),
+    'Partial_ratio': (lambda x, y: fuzz.partial_ratio(x, y) / 100),
+    'Token_sort_ratio': (lambda x, y: fuzz.token_sort_ratio(x, y) / 100),
+    'WRATIO': (lambda x, y: fuzz.WRatio(x, y) / 100),
+
+    # Token based
+    'Jaccard_index': textdistance.jaccard.normalized_similarity,
+    'Sorensen-Dice': textdistance.sorensen_dice.normalized_similarity,
+    'Tversky_index': textdistance.tversky.normalized_similarity,
+    'Overlap_coefficient': textdistance.overlap.normalized_similarity,
+    'Tanimoto_distance': textdistance.tanimoto.normalized_similarity,
+    'Cosine_similarity': textdistance.cosine.normalized_similarity,
+    'Monge-Elkan': textdistance.monge_elkan.normalized_similarity,
+    'Bag_distance': textdistance.bag.normalized_similarity,
 }
+
+# CONFIGURATION
+config = {}
 
 
 def loadConfig(data):
+    # files
+    config['configFilesPath'] = data['configFilesPath']
     variableFields = pd.read_csv(f"{data['configFilesPath']}/{data['variableFields']}").set_index('variable')
     compatibleData = pd.read_csv(f"{data['configFilesPath']}/{data['compatibleData']}").set_index('variable')
     config['comparisonSettings'] = compatibleData.join(variableFields).to_dict(orient='index')
 
     # schemes
-    config['schemesAllowed'] = pd.read_csv(f"{data['configFilesPath']}/{data['schemesAllowed']}", names=['schemes'])[
+    config['schemesToUse'] = pd.read_csv(f"{data['configFilesPath']}/{data['schemesToUse']}", names=['schemes'])[
         'schemes'].to_list()
     # TODO add option for "fast scheme"
     schemesConfig = pd.read_csv(f"{data['configFilesPath']}/{data['schemesConfig']}")
@@ -28,7 +55,10 @@ def loadConfig(data):
         schemesConfig.threshold = schemesConfig.threshold.str.replace(',', '.').astype(float)
     config['schemesConfig'] = schemesConfig
 
-    config['configFilesPath'] = data['configFilesPath']
+    # algorithms
+    algorithmsConfig = pd.read_csv(f"{data['configFilesPath']}/{data['algorithmsConfig']}")
+    algorithmsConfig['function'] = algorithmsConfig.scores.map(comparisonAlgorithms)
+    config['algorithmsConfig'] = algorithmsConfig
 
 
 def isNaN(value):
@@ -123,12 +153,11 @@ def areCompatibles(row1, row2, verbose=False):
 
 def areCandidates(row1, row2, base1, base2, verbose=False):
     candidates = True
+    information = {}
 
     for scheme, key1, key2, threshold in config['schemesConfig'].itertuples(index=False):
         # check for valid scheme and keys
-        if scheme not in config['schemesAllowed']:
-            if verbose:
-                print(f"Scheme not used: {scheme}")
+        if scheme not in config['schemesToUse']:
             continue
         if verbose:
             print(f"Running scheme {scheme}")
@@ -142,11 +171,24 @@ def areCandidates(row1, row2, base1, base2, verbose=False):
         value1 = row1[key1]
         value2 = row2[key2]
 
-        information = {}
+        medianInfo = []
 
-        for algorithmName, algorithm in config['comparisonAlgorithms'].items():
-            result = algorithm(value1, value2)
-            candidates &= (result >= threshold)
+        for algorithmName, doCalculate, addToMedian, function in config['algorithmsConfig'].itertuples(index=False):
+            if doCalculate:
+                result = function(value1, value2)
+                information[f"{algorithmName}_{scheme}"] = round(result, 4)
 
-            information[f"{algorithmName}_{scheme}"] = result
+                if addToMedian:
+                    medianInfo.append(result)
+
+        median = sum(medianInfo)/len(medianInfo)
+        candidates &= (median >= threshold)
+        information[f"median_{scheme}"] = round(median, 4)
+
     return candidates, pd.Series(information)
+
+
+def getSortedCandidatesDF(candidatesList):
+    sortPriority = [f"median_{scheme}" for scheme in config['schemesToUse']]
+    return pd.concat(candidatesList, axis=1).T.sort_values(
+        sortPriority, ascending=False, kind='stable', ignore_index=True)

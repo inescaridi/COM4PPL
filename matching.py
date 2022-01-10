@@ -1,7 +1,10 @@
-import os, sys
-import com4ppl
-import pandas as pd
 import json
+import os
+import sys
+
+import pandas as pd
+
+import com4ppl
 
 
 def main(interactive, verbose):
@@ -38,6 +41,10 @@ def main(interactive, verbose):
                 else:
                     success = True
             data['outputPath'] = outputPath
+
+        outputFileName = input("Please insert output file name (leave empty to use default):")
+        if outputFileName != '':
+            data['outputFileName'] = outputFileName
 
     com4ppl.loadConfig(data)
     makeMatching(data, verbose)
@@ -80,19 +87,21 @@ def makeMatching(data, verbose):
             candidatesList.append(pd.concat([row1, row2, information]))
 
     # output result
-    candidatesDF = pd.concat(candidatesList, axis=1).T
-    candidatesDF.to_csv(f"{data['outputPath']}/{data['outputFileName']}.csv", index=False)
-
-    print(f"END, results are in {data['outputPath']}")
+    if len(candidatesList) > 0:
+        candidatesDF = com4ppl.getSortedCandidatesDF(candidatesList)
+        candidatesDF.to_csv(f"{data['outputPath']}/{data['outputFileName']}.csv", index=False)
+        print(f"{len(candidatesList)} pairs of candidates found, results are in {data['outputPath']}")
+    else:
+        print("No candidates found")
 
 
 if __name__ == '__main__':
-    interactive = verbose = False
+    interactiveOp = verboseOp = False
 
     if len(sys.argv) > 1:
         if '-i' in sys.argv[1:]:
-            interactive = True
+            interactiveOp = True
         if '-v' in sys.argv[1:]:
-            verbose = True
+            verboseOp = True
 
-    main(interactive, verbose)
+    main(interactiveOp, verboseOp)
