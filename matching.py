@@ -67,8 +67,7 @@ def makeMatching(data, verbose):
     sub_timer_start = time.time()
     compatiblesDF = base1.apply(lambda r1: base2.apply(lambda r2: com4ppl.areCompatibles(r1, r2), axis=1), axis=1)
     i1, i2 = compatiblesDF.values.nonzero()
-    compatibles = list(zip(i1, i2))  # TODO find a way to skip the creation of this list
-    print(f"\tFound {len(compatibles)} compatible rows in {round(time.time() - sub_timer_start, 4)} seconds")
+    print(f"\tFound {len(i1)} compatible rows in {round(time.time() - sub_timer_start, 4)} seconds")
 
     # run configured schemes on compatible pairs
     print("Running schemes on compatible pairs")
@@ -76,7 +75,7 @@ def makeMatching(data, verbose):
     candidatesList = []
     sub_timer_start = time.time()
 
-    for i1, i2 in compatibles:
+    for i1, i2 in zip(i1, i2):
         row1 = base1.iloc[i1]
         row2 = base2.iloc[i2]
 
