@@ -5,6 +5,7 @@ import sys
 import pandas as pd
 
 import com4ppl
+import time
 
 
 def main(interactive, verbose):
@@ -55,20 +56,25 @@ def makeMatching(data, verbose):
     os.makedirs(data['outputPath'], exist_ok=True)
 
     # load databases
-    print(f"Loading databases, db1: {data['base1Path']}, db2: {data['base2Path']}")
+    print(f"Loading databases ")
     base1 = pd.read_csv(data['base1Path'])
     base2 = pd.read_csv(data['base2Path'])
+    print(f"\tdb1: {data['base1Path']}, size: {base1.shape[0]}")
+    print(f"\tdb2: {data['base2Path']}, size: {base2.shape[0]}")
 
     # find compatible rows
     print("Finding compatible rows")
+    sub_timer_start = time.time()
     compatiblesDF = base1.apply(lambda r1: base2.apply(lambda r2: com4ppl.areCompatibles(r1, r2), axis=1), axis=1)
     i1, i2 = compatiblesDF.values.nonzero()
-    compatibles = list(zip(i1, i2))
+    compatibles = list(zip(i1, i2))  # TODO find a way to skip the creation of this list
+    print(f"\tFound {len(compatibles)} compatible rows in {round(time.time() - sub_timer_start, 4)} seconds")
 
     # run configured schemes on compatible pairs
     print("Running schemes on compatible pairs")
 
     candidatesList = []
+    sub_timer_start = time.time()
 
     for i1, i2 in compatibles:
         row1 = base1.iloc[i1]
@@ -83,11 +89,13 @@ def makeMatching(data, verbose):
 
             candidatesList.append(pd.concat([row1, row2, information]))
 
+    print(f"\tFound {len(candidatesList)} candidates in {round(time.time() - sub_timer_start, 4)} seconds")
+
     # output result
     if len(candidatesList) > 0:
         candidatesDF = com4ppl.getSortedCandidatesDF(candidatesList)
         candidatesDF.to_csv(f"{data['outputPath']}/{data['outputFileName']}.csv", index=False)
-        print(f"{len(candidatesList)} pairs of candidates found, results are in {data['outputPath']}")
+        print(f"Finish sorting candidates, results are in {data['outputPath']}")
     else:
         print("No candidates found")
 
@@ -101,4 +109,6 @@ if __name__ == '__main__':
         if '-v' in sys.argv[1:]:
             verboseOp = True
 
+    timer_start = time.time()
     main(interactiveOp, verboseOp)
+    print(f"Finished in {round(time.time() - timer_start, 4)} seconds")
