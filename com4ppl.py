@@ -46,7 +46,7 @@ def loadConfig(data):
     compatibleData = pd.read_csv(f"{data['configFilesPath']}/{data['compatibleData']}").set_index('variable')
     compatibleData['equivalences'] = compatibleData[compatibleData.type == 'categorical'].parameter.apply(
         loadEquivalences)
-    config['comparisonSettings'] = compatibleData.join(variableFields).to_dict(orient='index')
+    config['compatibleSettings'] = compatibleData.join(variableFields).to_dict(orient='index')
 
     # schemes
     config['schemesToUse'] = pd.read_csv(f"{data['configFilesPath']}/{data['schemesToUse']}", names=['schemes'])[
@@ -81,80 +81,54 @@ def isNaN(value):
         return np.isnan(value)
 
 
-def areEquivalentValues(val1, val2, equivalences):
-    return (val1 == val2 or (val1, val2) in equivalences) or ((val2, val1) in equivalences)
+def findCompatibles(row1, db2):
+    compatibles = db2
 
-
-def compatibleRanges(row1, row2, options, verbose=False):
-    compatible = True  # need to be compatible on all available fields (can be changed for 'or')
-    allowNa = options['na.action'] == 'all'
-
-    # for debugging
-    val1 = val2 = 'NAN'
-
-    for field in options['fields'].split(' '):
-        if field not in row1 or field not in row2:
-            continue
-
-        if isNaN(row1[field]) or isNaN(row2[field]):
-            compatible &= allowNa
-        else:
-            compatible &= abs(int(row1[field]) - int(row2[field])) <= int(options['parameter'])
-            val1 = int(row1[field])
-            val2 = int(row2[field])
-
-    # for debugging
-    if verbose:
-        print(f"\tval1:{val1}, val2:{val2}, allowNa: {allowNa}, range:{int(options['parameter'])}")
-
-    return compatible
-
-
-def compatibleCategory(row1, row2, options, verbose=False):
-    compatible = True  # need to be compatible on all available fields (can be changed for 'or')
-    allowNa = options['na.action'].upper() == 'ALL'
-
-    # for debugging
-    val1 = val2 = 'NAN'
-
-    for field in options['fields'].split(' '):
-        if field not in row1 or field not in row2:
-            continue
-
-        if isNaN(row1[field]) or isNaN(row2[field]):
-            compatible &= allowNa
-        elif not isNaN(options['equivalences']):
-            compatible &= areEquivalentValues(row1[field], row2[field], options['equivalences'])
-            val1 = row1[field]
-            val2 = row2[field]
-
-    # for debugging
-    if verbose:
-        print(f"\tval1:{val1}, val2:{val2}, allowNa: {allowNa}")
-
-    return compatible
-
-
-def areCompatibles(row1, row2, verbose=False):
-    compatible = True
-
-    for variable, options in config['comparisonSettings'].items():
+    for variable, options in config['compatibleSettings'].items():
         if options['consider'].lower() == 'yes':
-            if verbose:
-                print(f"{variable} compatible?")
-            varCompatible = True
+            allowNa = options['na.action'].upper() == 'ALL'
 
-            if options['type'] == 'range':
-                varCompatible = compatibleRanges(row1, row2, options, verbose)
-            elif options['type'] == 'categorical':
-                varCompatible = compatibleCategory(row1, row2, options, verbose)
+            for field in options['fields'].split(' '):
+                if field not in row1 or field not in db2.columns:
+                    continue
 
-            compatible &= varCompatible
-            if verbose:
-                print(f"\tresult: {varCompatible}")
-    if verbose:
-        print(f"Candidates? {compatible} \n")
-    return compatible
+                # If the value on the current row is NaN and matching with NaN is allowed,
+                # we should not filter anything, since anything will match with it
+                if isNaN(row1[field]) and allowNa:
+                    continue
+
+                filtered = pd.DataFrame()
+
+                # Type: Range
+                if options['type'] == 'range':
+                    filtered = compatibles[compatibles[field].between(
+                        row1[field] - int(options['parameter']),
+                        row1[field] + int(options['parameter']))]
+                # Type: Categorical
+                elif options['type'] == 'categorical':
+                    filtered = compatibles[compatibles[field] == row1[field]]
+                    equivalences = options['equivalences']
+
+                    # TODO find another way to represent equivalences or "move" to preprocessing.
+                    if not isNaN(equivalences):
+                        for v1, v2 in equivalences:
+                            equivalent = pd.DataFrame()
+
+                            if v1 == row1[field]:
+                                equivalent = compatibles[compatibles[field] == v2]
+                            elif v2 == row1[field]:
+                                equivalent = compatibles[compatibles[field] == v1]
+
+                            filtered = pd.concat([filtered, equivalent])
+
+                # No matter the type it is always the same search for NaN values if allowed
+                if allowNa:
+                    nan = compatibles[compatibles[field].isna()]
+                    compatibles = pd.concat([filtered, nan])
+                else:
+                    compatibles = filtered
+
+    return compatibles.index
 
 
 def areCandidates(row1, row2, base1, base2, verbose=False):

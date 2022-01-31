@@ -73,9 +73,10 @@ def makeMatching(data, verbose, debug):
     # find compatible rows
     print("Finding compatible rows")
     sub_timer_start = time.time()
-    compatiblesDF = base1.apply(lambda r1: base2.apply(lambda r2: com4ppl.areCompatibles(r1, r2), axis=1), axis=1)
-    i1, i2 = compatiblesDF.values.nonzero()
-    print(f"\tFound {len(i1)} compatible rows in {round(time.time() - sub_timer_start, 4)} seconds")
+
+    compatibles = base1.apply(lambda r1: com4ppl.findCompatibles(r1, base2), axis=1)
+
+    print(f"\tFound {sum(map(len, compatibles.values))} compatible rows in {round(time.time() - sub_timer_start, 4)} seconds")
 
     if debug:
         mem = round(python_process.memory_info().rss / 1e+9, 4)
@@ -88,18 +89,19 @@ def makeMatching(data, verbose, debug):
     candidatesList = []
     sub_timer_start = time.time()
 
-    for i1, i2 in zip(i1, i2):
-        row1 = base1.iloc[i1]
-        row2 = base2.iloc[i2]
+    for i1, c in compatibles.iteritems():
+        for i2 in c:
+            row1 = base1.iloc[i1]
+            row2 = base2.iloc[i2]
 
-        candidates, information = com4ppl.areCandidates(row1, row2, base1, base2, verbose)
+            candidates, information = com4ppl.areCandidates(row1, row2, base1, base2, verbose)
 
-        if candidates:
-            # rename columns as base1_ and base2_
-            row1.set_axis(['base1_' + x for x in base1.columns], inplace=True)
-            row2.set_axis(['base2_' + x for x in base2.columns], inplace=True)
+            if candidates:
+                # rename columns as base1_ and base2_
+                row1.set_axis(['base1_' + x for x in base1.columns], inplace=True)
+                row2.set_axis(['base2_' + x for x in base2.columns], inplace=True)
 
-            candidatesList.append(pd.concat([row1, row2, information]))
+                candidatesList.append(pd.concat([row1, row2, information]))
 
     if debug:
         mem = round(python_process.memory_info().rss / 1e+9, 4)
