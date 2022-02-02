@@ -81,7 +81,7 @@ def isNaN(value):
         return np.isnan(value)
 
 
-def findCompatibles(row1, db2):
+def findCompatibleRows(row1, db2):
     compatibles = db2
 
     for variable, options in config['compatibleSettings'].items():
@@ -131,44 +131,61 @@ def findCompatibles(row1, db2):
     return compatibles.index
 
 
-def areCandidates(row1, row2, base1, base2, verbose=False):
-    candidates = True
-    information = {}
+def findCompatibles(base1, base2):
+    compatibles = base1.apply(lambda r1: findCompatibleRows(r1, base2), axis=1)
+    # Convert compatibles index series to complete dataframe with row information
+    compatiblesList = []
+    for i1, c in compatibles.iteritems():
+        for i2 in c:
+            row1 = base1.iloc[i1]
+            row2 = base2.iloc[i2]
 
+            row1.set_axis(['base1_' + x for x in base1.columns], inplace=True)
+            row2.set_axis(['base2_' + x for x in base2.columns], inplace=True)
+
+            compatiblesList.append(pd.concat([row1, row2]))
+
+    return pd.DataFrame(compatiblesList)
+
+
+def findCandidates(compatiblesDF, verbose=False):
     for scheme, key1, key2, threshold in config['schemesConfig'].itertuples(index=False):
+        key1 = 'base1_' + key1
+        key2 = 'base2_' + key2
+
         # check for valid scheme and keys
         if scheme not in config['schemesToUse']:
             continue
         if verbose:
             print(f"Running scheme {scheme}")
-        if key1 not in base1.columns:
+        if key1 not in compatiblesDF.columns:
             print(f"Error: Invalid key on database 1 {key1}, skipping")
             continue
-        if key2 not in base2.columns:
+        if key2 not in compatiblesDF.columns:
             print(f"Error: Invalid key on database 2 {key2}, skipping")
             continue
 
-        value1 = row1[key1]
-        value2 = row2[key2]
-
-        medianInfo = []
+        medianCount = 0
+        compatiblesDF[f"sum_median_{scheme}"] = 0
 
         for algorithmName, doCalculate, addToMedian, function in config['algorithmsConfig'].itertuples(index=False):
             if doCalculate:
-                result = function(value1, value2)
-                information[f"{algorithmName}_{scheme}"] = round(result, 4)
+                compatiblesDF[f"{algorithmName}_{scheme}"] = compatiblesDF.apply(
+                    lambda x: round(function(x[key1], x[key2]), 4), axis=1)
 
                 if addToMedian:
-                    medianInfo.append(result)
+                    compatiblesDF[f"sum_median_{scheme}"] += compatiblesDF[f"{algorithmName}_{scheme}"]
+                    medianCount += 1
 
-        median = sum(medianInfo) / len(medianInfo)
-        candidates &= (median >= threshold)
-        information[f"median_{scheme}"] = round(median, 4)
+        compatiblesDF[f"median_{scheme}"] = round(compatiblesDF[f"sum_median_{scheme}"] / medianCount, 4)
+        compatiblesDF.drop(f"sum_median_{scheme}", axis=1, inplace=True)
+        compatiblesDF = compatiblesDF[compatiblesDF[f"median_{scheme}"] >= threshold]
 
-    return candidates, pd.Series(information)
+    return sortCandidatesDF(compatiblesDF)
 
 
-def getSortedCandidatesDF(candidatesList):
+def sortCandidatesDF(candidatesDF):
+    candidatesDF.to_csv(f"prueba.csv", index=False)
     sortPriority = [f"median_{scheme}" for scheme in config['schemesToUse']]
-    return pd.concat(candidatesList, axis=1).T.sort_values(
+    return candidatesDF.sort_values(
         sortPriority, ascending=False, kind='stable', ignore_index=True)

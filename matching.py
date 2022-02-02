@@ -10,7 +10,7 @@ import time
 import psutil
 
 
-def main(interactive, verbose, debug):
+def main(interactive, verbose):
     with open("config.json") as json_data_file:
         data = json.load(json_data_file)
 
@@ -50,10 +50,10 @@ def main(interactive, verbose, debug):
             data['outputFileName'] = outputFileName
 
     com4ppl.loadConfig(data)
-    makeMatching(data, verbose, debug)
+    makeMatching(data, verbose)
 
 
-def makeMatching(data, verbose, debug):
+def makeMatching(data, verbose):
     maxUsedMem = 0
     # output folder
     os.makedirs(data['outputPath'], exist_ok=True)
@@ -65,68 +65,42 @@ def makeMatching(data, verbose, debug):
     print(f"\tdb1: {data['base1Path']}, size: {base1.shape[0]}")
     print(f"\tdb2: {data['base2Path']}, size: {base2.shape[0]}")
 
-    if debug:
-        mem = round(python_process.memory_info().rss / 1e+9, 4)  # TODO check if this is correct
-        maxUsedMem = max(maxUsedMem, mem)
-        print(f"\tDEBUG>> Used memory: {mem} GB")
+    # TODO check if this way of getting the used mem is correct
+    maxUsedMem = max(maxUsedMem, round(python_process.memory_info().rss / 1e+9, 4))
 
-    # find compatible rows
-    print("Finding compatible rows")
+    # find compatible rows ------------------------------------------------------------- step 1
+    print("Finding compatible pairs")
     sub_timer_start = time.time()
 
-    compatibles = base1.apply(lambda r1: com4ppl.findCompatibles(r1, base2), axis=1)
+    compatiblesDF = com4ppl.findCompatibles(base1, base2)
 
-    print(f"\tFound {sum(map(len, compatibles.values))} compatible rows in {round(time.time() - sub_timer_start, 4)} seconds")
+    print(f"\tFound {compatiblesDF.shape[0]} compatible rows in {round(time.time() - sub_timer_start, 4)} seconds")
+    maxUsedMem = max(maxUsedMem, round(python_process.memory_info().rss / 1e+9, 4))
 
-    if debug:
-        mem = round(python_process.memory_info().rss / 1e+9, 4)
-        maxUsedMem = max(maxUsedMem, mem)
-        print(f"\tDEBUG>> Used memory: {mem} GB")
-
-    # run configured schemes on compatible pairs
+    # run configured schemes on compatible pairs  -------------------------------------- step 2
     print("Running schemes on compatible pairs")
-
-    candidatesList = []
     sub_timer_start = time.time()
 
-    for i1, c in compatibles.iteritems():
-        for i2 in c:
-            row1 = base1.iloc[i1]
-            row2 = base2.iloc[i2]
+    candidatesDF = com4ppl.findCandidates(compatiblesDF, verbose)
 
-            candidates, information = com4ppl.areCandidates(row1, row2, base1, base2, verbose)
+    print(f"\tFound {candidatesDF.shape[0]} candidates in {round(time.time() - sub_timer_start, 4)} seconds")
+    maxUsedMem = max(maxUsedMem, round(python_process.memory_info().rss / 1e+9, 4))
 
-            if candidates:
-                # rename columns as base1_ and base2_
-                row1.set_axis(['base1_' + x for x in base1.columns], inplace=True)
-                row2.set_axis(['base2_' + x for x in base2.columns], inplace=True)
-
-                candidatesList.append(pd.concat([row1, row2, information]))
-
-    if debug:
-        mem = round(python_process.memory_info().rss / 1e+9, 4)
-        maxUsedMem = max(maxUsedMem, mem)
-        print(f"\tDEBUG>> Used memory: {mem} GB")
-
-    print(f"\tFound {len(candidatesList)} candidates in {round(time.time() - sub_timer_start, 4)} seconds")
-
-    # output result
-    if len(candidatesList) > 0:
-        candidatesDF = com4ppl.getSortedCandidatesDF(candidatesList)
+    # output result -------------------------------------------------------------------- step 3
+    if candidatesDF.shape[0] > 0:
         candidatesDF.to_csv(f"{data['outputPath']}/{data['outputFileName']}.csv", index=False)
         print(f"Finished sorting candidates, results are in {data['outputPath']}")
     else:
         print("No candidates found")
 
-    if debug:
-        print(f"DEBUG>> Maximum used memory: {maxUsedMem} GB")
+    print(f"Maximum used memory: {maxUsedMem} GB")
 
 
 if __name__ == '__main__':
     pid = os.getpid()
     python_process = psutil.Process(pid)
 
-    interactiveOp = verboseOp = debugOp = False
+    interactiveOp = verboseOp = False
 
     # options must be placed after script name: "python matching.py options"
     if len(sys.argv) > 1:
@@ -134,11 +108,9 @@ if __name__ == '__main__':
             interactiveOp = True
         if '-v' in sys.argv[1:]:
             verboseOp = True
-        if '-d' in sys.argv[1:]:
-            debugOp = True
 
         # TODO add an argument to set up extra config and/or databases paths
 
     timer_start = time.time()
-    main(interactiveOp, verboseOp, debugOp)
+    main(interactiveOp, verboseOp)
     print(f"Finished in {round(time.time() - timer_start, 4)} seconds")
