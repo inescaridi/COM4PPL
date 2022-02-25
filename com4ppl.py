@@ -169,7 +169,7 @@ def findCandidates(compatiblesDF, verbose=False):
         compatiblesDF[f"sum_median_{scheme}"] = 0
 
         for algorithmName, doCalculate, addToMedian, function in config['algorithmsConfig'].itertuples(index=False):
-            if doCalculate:
+            if 'yes' in doCalculate:
                 compatiblesDF[f"{algorithmName}_{scheme}"] = compatiblesDF.apply(
                     lambda x: round(function(x[key1], x[key2]), 4), axis=1)
 
