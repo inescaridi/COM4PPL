@@ -5,8 +5,10 @@ Comparison for People: context-assisted name matching comparison
 # For users:
 ## Set up and running
 1- Clone or download this repository.
+
 2- Run `pip install -r requirements.txt` to install required libraries.
-3- Run the script `python3 matching.py`, you can also run it in interactive (`-i`) and/or verbose (`-v`) modes.
+
+3- Run the script `python3 matching.py` (`python.exe .\matching.py` on Anaconda Powershell on Windows). You can also run it in interactive (`-i`) and/or verbose (`-v`) modes.
 
 ## Interactive mode
 It will guide you through the configuration, allowing you to pick the databases paths, output folder and output file name.
@@ -29,7 +31,7 @@ It will show information of what the script is doing, for example which scheme i
 - dicts: has dictionary used to specify common misnomer or synonyms between values. This will be used in preprocessing script, not finished yet.
 - docs: for now it only has the old documentation for the R script.
 - example: has 'toy' databases to use as an example.
-- notebooks: this is deprecated but not deleted because it can be useful to future devs, as a user please run the scripted version instead of the notebook as the latter can be outdated.
+- notebooks: this is deprecated but not deleted because it can be useful to future devs, as a user please run the scripted version instead of the notebook as the latter can be outdated. (requirements.txt does not include required packages to run jupyter)
 
 
 # How to set up a virtualenv (optional)
