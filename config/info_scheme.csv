@@ -1,0 +1,6 @@
+"scheme","listA.column","listB.column","threshold"
+"A_A","Name_A","Name_A",0.3
+"F_F","Father_name_A","Father_name_A",0
+"M_M","Mother_name_A","Mother_name_A",0
+"AD_AD","Adress_A","Adress_A",0
+"Ph_Ph","Phone_1_PROC Phone_2_PROC Phone_3_PROC","Phone_1_PROC Phone_2_PROC Phone_3_PROC",0

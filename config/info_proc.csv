@@ -1,0 +1,12 @@
+Cod,var_new,var_original,var_type,is.proc,to.join
+BA1,Case.ID,ID,ID,0,1
+BA1,Name_1,Full.name,name,1,1
+BA1,Nat,Country.of.origin,nat,1,1
+BA1,Sex,Gender,sex,1,1
+BA1,Age,Age,age,1,1
+BA1,Rol,Rol,role,1,1
+BA2,Case.ID,ID,ID,0,1
+BA2,Name_1,Nombre,name,1,1
+BA2,Nat,Pais,nat,1,1
+BA2,Sex,Sexo,sex,1,1
+BA2,Age,Edad,age,1,1
