@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import textdistance
+from numpy import median
 from thefuzz import fuzz
 
 # Valid algorithms
@@ -165,20 +166,18 @@ def findCandidates(compatiblesDF, verbose=False):
             print(f"Error: Invalid key on database 2 {key2}, skipping")
             continue
 
-        medianCount = 0
-        compatiblesDF[f"sum_median_{scheme}"] = 0
+        compatiblesDF[f"elems_median_{scheme}"] = 0
 
         for algorithmName, doCalculate, addToMedian, function in config['algorithmsConfig'].itertuples(index=False):
-            if 'yes' in doCalculate:
-                compatiblesDF[f"{algorithmName}_{scheme}"] = compatiblesDF.apply(
-                    lambda x: round(function(x[key1], x[key2]), 4), axis=1)
+            if 'yes' in doCalculate.lower():
+                value = compatiblesDF.apply(lambda x: round(function(x[key1], x[key2]), 4), axis=1)
+                compatiblesDF[f"{algorithmName}_{scheme}"] = value
 
                 if addToMedian:
-                    compatiblesDF[f"sum_median_{scheme}"] += compatiblesDF[f"{algorithmName}_{scheme}"]
-                    medianCount += 1
+                    compatiblesDF[f"elems_median_{scheme}"] += value
 
-        compatiblesDF[f"median_{scheme}"] = round(compatiblesDF[f"sum_median_{scheme}"] / medianCount, 4)
-        compatiblesDF.drop(f"sum_median_{scheme}", axis=1, inplace=True)
+        compatiblesDF[f"median_{scheme}"] = median(compatiblesDF[f"elems_median_{scheme}"])
+        compatiblesDF.drop(f"elems_median_{scheme}", axis=1, inplace=True)
         compatiblesDF = compatiblesDF[compatiblesDF[f"median_{scheme}"] >= threshold]
 
     return sortCandidatesDF(compatiblesDF)
