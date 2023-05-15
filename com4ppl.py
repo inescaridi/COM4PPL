@@ -67,14 +67,14 @@ def load_config(data):
 
 
 def load_equivalences(filename):
-    if not is_Nan(filename):
+    if not is_nan(filename):
         equivalences_df = pd.read_csv(f"{config['configFilesPath']}/{filename}")
         return list(equivalences_df.itertuples(index=False, name=None))
     else:
         return np.nan
 
 
-def is_Nan(value):
+def is_nan(value) -> bool:
     if type(value) == str:
         return value.upper() == 'NAN'
     elif type(value) == list:
@@ -88,7 +88,7 @@ def find_compatible_rows(row1, db2):
 
     for variable, options in config['compatibleSettings'].items():
         if options['consider'].lower() == 'yes':
-            allowNa = options['na.action'].upper() == 'ALL'
+            allow_na = options['na.action'].upper() == 'ALL'
 
             for field in options['fields'].split(' '):
                 if field not in row1 or field not in db2.columns:
@@ -96,7 +96,7 @@ def find_compatible_rows(row1, db2):
 
                 # If the value on the current row is NaN and matching with NaN is allowed,
                 # we should not filter anything, since anything will match with it
-                if is_Nan(row1[field]) and allowNa:
+                if is_nan(row1[field]) and allow_na:
                     continue
 
                 filtered = pd.DataFrame()
@@ -112,7 +112,7 @@ def find_compatible_rows(row1, db2):
                     equivalences = options['equivalences']
 
                     # TODO find another way to represent equivalences or "move" to preprocessing.
-                    if not is_Nan(equivalences):
+                    if not is_nan(equivalences):
                         for v1, v2 in equivalences:
                             equivalent = pd.DataFrame()
 
@@ -124,7 +124,7 @@ def find_compatible_rows(row1, db2):
                             filtered = pd.concat([filtered, equivalent])
 
                 # No matter the type it is always the same search for NaN values if allowed
-                if allowNa:
+                if allow_na:
                     nan = compatibles[compatibles[field].isna()]
                     compatibles = pd.concat([filtered, nan])
                 else:
@@ -133,24 +133,31 @@ def find_compatible_rows(row1, db2):
     return compatibles.index
 
 
-def find_compatibles(base1: DataFrame, base2: DataFrame):
+def find_compatibles(base1: DataFrame, base2: DataFrame) -> DataFrame:
     compatibles = base1.apply(lambda r1: find_compatible_rows(r1, base2), axis=1)
     # Convert compatibles index series to complete dataframe with row information
     compatibles_list = []
     for i1, c in compatibles.items():
         for i2 in c:
-            row1 = base1.iloc[i1]
-            row2 = base2.iloc[i2]
-
-            row1.set_axis(['base1_' + x for x in base1.columns], inplace=True)
-            row2.set_axis(['base2_' + x for x in base2.columns], inplace=True)
+            row1 = base1.iloc[i1].set_axis(['base1_' + x for x in base1.columns])
+            row2 = base2.iloc[i2].set_axis(['base2_' + x for x in base2.columns])
 
             compatibles_list.append(pd.concat([row1, row2]))
 
     return pd.DataFrame(compatibles_list)
 
 
-def find_candidates(compatibles_df, verbose=False):
+def safe_apply(function, row, key1, key2):
+    if is_nan(row[key1]):
+        print(f"No value found on base1 with key: {key1[6:]}, DEFAULTING to zero")
+        return 0
+    if is_nan(row[key2]):
+        print(f"No value found on base2 with key: {key2[6:]}, DEFAULTING to zero")
+        return 0
+    return round(function(row[key1], row[key2]), 4)
+
+
+def find_candidates(compatibles: DataFrame, verbose=False) -> DataFrame:
     for scheme, key1, key2, threshold in config['schemesConfig'].itertuples(index=False):
         key1 = 'base1_' + key1
         key2 = 'base2_' + key2
@@ -160,32 +167,40 @@ def find_candidates(compatibles_df, verbose=False):
             continue
         if verbose:
             print(f"Running scheme {scheme}")
-        if key1 not in compatibles_df.columns:
+        if key1 not in compatibles.columns:
             print(f"Error: Invalid key on database 1 {key1}, skipping")
             continue
-        if key2 not in compatibles_df.columns:
+        if key2 not in compatibles.columns:
             print(f"Error: Invalid key on database 2 {key2}, skipping")
             continue
 
-        compatibles_df[f"elems_median_{scheme}"] = 0
+        compatibles[f"elems_median_{scheme}"] = 0
 
         for algorithmName, doCalculate, addToMedian, function in config['algorithmsConfig'].itertuples(index=False):
             if 'yes' in doCalculate.lower():
-                value = compatibles_df.apply(lambda x: round(function(x[key1], x[key2]), 4), axis=1)
-                compatibles_df[f"{algorithmName}_{scheme}"] = value
+                value = compatibles.apply(lambda row: safe_apply(function, row, key1, key2), axis=1)
+                compatibles[f"{algorithmName}_{scheme}"] = value
 
                 if addToMedian:
-                    compatibles_df[f"elems_median_{scheme}"] += value
+                    compatibles[f"elems_median_{scheme}"] += value
 
-        compatibles_df[f"median_{scheme}"] = median(compatibles_df[f"elems_median_{scheme}"])
-        compatibles_df.drop(f"elems_median_{scheme}", axis=1, inplace=True)
-        compatibles_df = compatibles_df[compatibles_df[f"median_{scheme}"] >= threshold]
+        compatibles[f"median_{scheme}"] = median(compatibles[f"elems_median_{scheme}"])
+        compatibles.drop(f"elems_median_{scheme}", axis=1, inplace=True)
+        compatibles = compatibles[compatibles[f"median_{scheme}"] >= threshold]
 
-    return sort_candidates_df(compatibles_df)
+    return sort_candidates_df(compatibles)
 
 
-def sort_candidates_df(candidates_df):
-    candidates_df.to_csv(f"prueba.csv", index=False)
-    sort_priority = [f"median_{scheme}" for scheme in config['schemesToUse']]
-    return candidates_df.sort_values(
+def sort_candidates_df(candidates: DataFrame) -> DataFrame:
+    candidates.to_csv(f"prueba.csv", index=False)
+
+    sort_priority = []
+    for scheme in config['schemesToUse']:
+        median_colname = f"median_{scheme}"
+        if median_colname in candidates:
+            sort_priority.append(median_colname)
+        else:
+            print(f"No {median_colname} found in candidates, perhaps there was an error in the calculation")
+
+    return candidates.sort_values(
         sort_priority, ascending=False, kind='stable', ignore_index=True)
