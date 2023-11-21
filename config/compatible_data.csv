@@ -3,4 +3,4 @@ Case.ID,Case.ID,,no,
 cod,cod,,no,
 nationality,categorical,"natEquivalences.csv",yes,all
 sex,categorical,,yes,all
-age,range,6,yes,all
+age,range,10,yes,all

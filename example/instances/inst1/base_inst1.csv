@@ -1,7 +1,7 @@
-"cod","orden.base","Case.ID","Name_1","Nat","Sex","Age","Rol","Name_1_PROC","Nat_PROC","Sex_PROC","Age_PROC","Rol_PROC","Name_A",Name_B,Father_name_A
-"BA1",NA,"BA1-01",Jorge Perez,"Denmark","M",11,"Missing","jorge perez","DENMARK","M",11,"missing","jorge perez","jorge perez",Juan Perez
-"BA1",NA,"BA1-05","Oscar Alvarez","Jordan","M",44,"Missing","oscar alvarez","JORDAN","M",44,"missing","oscar alvarez","oscar alvarez",Julian Alvarez
-"BA1",NA,"BA1-06","Juan Perez","Mali","",15,"Missing","juan perez","MALI",NA,15,"missing","juan perez","juan perez",
-"BA1",NA,"BA1-07","Maria Urcupiña","Peru","F",18,"Missing","maria urcupiña","PERU","F",18,"missing","maria urcupiña","maria urcupiña",Oscar Urcupiña
-"BA1",NA,"BA1-11","Juana Morales","Yemen","F",44,"Missing","juana morales","YEMEN","F",44,"missing","juana morales","juana morales",Jorge Quinotos
-"BA1",NA,"BA1-12","Esteban Quito","Seychelles","M",9,"Missing","esteban quito","SEYCHELLES","M",9,"missing","esteban quito","esteban quito",Armando E. Quito
+cod,orden.base,Case.ID,Name_1,Nat,Sex,Age,Rol,Name_1_PROC,Nat_PROC,Sex_PROC,Age_PROC,Rol_PROC,Name_A,Name_B,Father_name_A
+BA1,NA,BA1-01,Jorge Perez,Argentina,M,11,Missing,jorge perez,ARGENTINA,M,11,missing,jorge perez,jorge perez,Juan Perez
+BA1,NA,BA1-05,Oscar Alvarez,Argentina,M,44,Missing,oscar alvarez,ARGENTINA,M,44,missing,oscar alvarez,oscar alvarez,Julian Alvarez
+BA1,NA,BA1-06,Juan Perez,Argentina,,15,Missing,juan perez,ARGENTINA,NA,15,missing,juan perez,juan perez,
+BA1,NA,BA1-07,Joan Tuto Perez,Argentina,F,18,Missing,maria urcupiña,ARGENTINA,F,18,missing,joan tuto perez,joan tuto perez,Oscar Urcupiña
+BA1,NA,BA1-11,Juana Morales,Argentina,F,44,Missing,juana morales,ARGENTINA,F,44,missing,juana morales,juana morales,Jorge Quinotos
+BA1,NA,BA1-12,Esteban Quito,Argentina,M,9,Missing,esteban quito,ARGENTINA,M,9,missing,esteban quito,esteban quito,Armando E. Quito

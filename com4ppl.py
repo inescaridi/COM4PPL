@@ -174,17 +174,19 @@ def find_candidates(compatibles: DataFrame, verbose=False) -> DataFrame:
             print(f"Error: Invalid key on database 2 {key2}, skipping")
             continue
 
-        compatibles[f"elems_median_{scheme}"] = 0
+        compatibles[f"elems_median_{scheme}"] = [[] for _ in range(len(compatibles))]
 
         for algorithmName, doCalculate, addToMedian, function in config['algorithmsConfig'].itertuples(index=False):
             if 'yes' in doCalculate.lower():
-                value = compatibles.apply(lambda row: safe_apply(function, row, key1, key2), axis=1)
-                compatibles[f"{algorithmName}_{scheme}"] = value
+                values = compatibles.apply(lambda row: safe_apply(function, row, key1, key2), axis=1)
+                compatibles[f"{algorithmName}_{scheme}"] = values
 
                 if addToMedian:
-                    compatibles[f"elems_median_{scheme}"] += value
+                    compatibles['values'] = [[v] for v in values]
+                    compatibles[f"elems_median_{scheme}"] += compatibles['values']
+                    compatibles.drop('values', axis=1, inplace=True)
 
-        compatibles[f"median_{scheme}"] = median(compatibles[f"elems_median_{scheme}"])
+        compatibles[f"median_{scheme}"] = compatibles[f"elems_median_{scheme}"].apply(lambda x: np.median(x))
         compatibles.drop(f"elems_median_{scheme}", axis=1, inplace=True)
         compatibles = compatibles[compatibles[f"median_{scheme}"] >= threshold]
 

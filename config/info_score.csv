@@ -1,6 +1,6 @@
 scores,calculation,median
 Levenshtein,yes,1
-D_L,yes,0
+D_L,yes,1
 MLIPNS,no,0
 Hamming,no,0
 Jaro-Winkler,no,0
@@ -10,8 +10,8 @@ Gotoh,no,0
 Smith-Waterman,no,0
 Ratio,yes,0
 Partial_ratio,yes,0
-Token_sort_ratio,yes,0
-WRATIO,yes,0
+Token_sort_ratio,yes,1
+WRATIO,yes,1
 Jaccard_index,no,0
 Sorensen-Dice,no,0
 Tversky_index,no,0
