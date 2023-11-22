@@ -186,7 +186,7 @@ def find_candidates(compatibles: DataFrame, verbose=False) -> DataFrame:
                     compatibles[f"elems_median_{scheme}"] += compatibles['values']
                     compatibles.drop('values', axis=1, inplace=True)
 
-        compatibles[f"median_{scheme}"] = compatibles[f"elems_median_{scheme}"].apply(lambda x: np.median(x))
+        compatibles[f"median_{scheme}"] = compatibles[f"elems_median_{scheme}"].apply(lambda x: np.median(x).round(4))
         compatibles.drop(f"elems_median_{scheme}", axis=1, inplace=True)
         compatibles = compatibles[compatibles[f"median_{scheme}"] >= threshold]
 
