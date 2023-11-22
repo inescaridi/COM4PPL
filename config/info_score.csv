@@ -12,7 +12,7 @@ Ratio,yes,0
 Partial_ratio,yes,0
 Token_sort_ratio,yes,1
 WRATIO,yes,1
-Jaccard_index,no,0
+Jaccard_index,yes,1
 Sorensen-Dice,no,0
 Tversky_index,no,0
 Overlap_coefficient,no,0
